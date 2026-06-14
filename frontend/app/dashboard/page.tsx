@@ -63,7 +63,8 @@ export default function DashboardPage() {
     setError("");
     try {
       const { data } = await runAnalysis(selectedResume, targetRole.trim());
-      router.push(`/analysis?data=${encodeURIComponent(JSON.stringify(data))}`);
+      sessionStorage.setItem("analysisResult", JSON.stringify(data));
+      router.push("/analysis");
     } catch (err: any) {
       setError(err.response?.data?.detail || "Analysis failed. Check your API key.");
     } finally {

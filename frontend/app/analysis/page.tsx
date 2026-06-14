@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnalysisResult, RoadmapPhase, SkillGap, WritingImprovement } from "@/lib/types";
 import { CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -27,19 +27,18 @@ function importanceColor(imp: string) {
 
 function AnalysisContent() {
   const router = useRouter();
-  const params = useSearchParams();
   const [data, setData] = useState<AnalysisResult | null>(null);
   const [openPhase, setOpenPhase] = useState<number | null>(0);
 
   useEffect(() => {
-    const raw = params.get("data");
+    const raw = sessionStorage.getItem("analysisResult");
     if (!raw) { router.push("/dashboard"); return; }
     try {
-      setData(JSON.parse(decodeURIComponent(raw)));
+      setData(JSON.parse(raw));
     } catch {
       router.push("/dashboard");
     }
-  }, [params, router]);
+  }, [router]);
 
   if (!data) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -279,9 +278,5 @@ function AnalysisContent() {
 }
 
 export default function AnalysisPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-gray-950 flex items-center justify-center text-gray-400">Loading...</div>}>
-      <AnalysisContent />
-    </Suspense>
-  );
+  return <AnalysisContent />;
 }
