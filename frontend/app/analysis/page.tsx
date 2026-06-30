@@ -79,40 +79,68 @@ function AnalysisContent() {
         </div>
 
         {/* Skills */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-400" /> Matched Skills
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {data.matched_skills.length > 0 ? data.matched_skills.map((s) => (
-                <span key={s} className="px-3 py-1 bg-green-900/20 border border-green-800 text-green-300 text-sm rounded-full">{s}</span>
-              )) : (
-                <span className="text-sm text-gray-500">No matched skills found</span>
-              )}
+        {(() => {
+          const roleNotRecognised = data.extracted_skills.length > 0 && data.matched_skills.length === 0 && data.missing_skills.length === 0;
+          if (roleNotRecognised) {
+            return (
+              <div className="bg-gray-900 border border-yellow-800/50 rounded-2xl p-6 space-y-4">
+                <div className="flex items-start gap-3 bg-yellow-900/20 border border-yellow-800 rounded-xl p-4">
+                  <AlertCircle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-yellow-300 font-medium">Role not recognised for skill matching</p>
+                    <p className="text-yellow-400/70 text-sm mt-0.5">
+                      Try one of: <span className="font-medium">Software Engineer, AI Engineer, Data Analyst, Web Developer, Cybersecurity Analyst</span>
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400 mb-3">Skills found in your resume:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {data.extracted_skills.map((s) => (
+                      <span key={s} className="px-3 py-1 bg-indigo-900/20 border border-indigo-800 text-indigo-300 text-sm rounded-full">{s}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-400" /> Matched Skills
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {data.matched_skills.length > 0 ? data.matched_skills.map((s) => (
+                    <span key={s} className="px-3 py-1 bg-green-900/20 border border-green-800 text-green-300 text-sm rounded-full">{s}</span>
+                  )) : (
+                    <span className="text-sm text-gray-500">No skills matched the role requirements</span>
+                  )}
+                </div>
+              </div>
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  {data.missing_skills.length === 0
+                    ? <CheckCircle className="w-5 h-5 text-green-400" />
+                    : <XCircle className="w-5 h-5 text-red-400" />
+                  } Missing Skills
+                </h2>
+                {data.missing_skills.length === 0 ? (
+                  <div className="flex items-center gap-2 text-green-400">
+                    <CheckCircle className="w-4 h-4" />
+                    <span className="text-sm font-medium">You have all the required skills — great job!</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {data.missing_skills.map((s) => (
+                      <span key={s} className="px-3 py-1 bg-red-900/20 border border-red-800 text-red-300 text-sm rounded-full">{s}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              {data.missing_skills.length === 0
-                ? <CheckCircle className="w-5 h-5 text-green-400" />
-                : <XCircle className="w-5 h-5 text-red-400" />
-              } Missing Skills
-            </h2>
-            {data.missing_skills.length === 0 ? (
-              <div className="flex items-center gap-2 text-green-400">
-                <CheckCircle className="w-4 h-4" />
-                <span className="text-sm font-medium">You have all the required skills — great job!</span>
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {data.missing_skills.map((s) => (
-                  <span key={s} className="px-3 py-1 bg-red-900/20 border border-red-800 text-red-300 text-sm rounded-full">{s}</span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Strengths & Weaknesses */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -1,5 +1,6 @@
 from groq import Groq
 import json
+import difflib
 from app.config import settings
 from app.utils.job_roles import JOB_ROLE_REQUIREMENTS
 
@@ -66,30 +67,36 @@ ROLE_ALIASES = {
 def _find_role_key(target_role: str) -> str:
     """Map any user-typed role to the closest JOB_ROLE_REQUIREMENTS key."""
     role_lower = target_role.lower().strip()
-    # Exact match first
+
+    # Build a flat lookup: normalised alias → role key
+    all_candidates: dict[str, str] = {}
     for key in JOB_ROLE_REQUIREMENTS:
-        if key.lower() == role_lower:
-            return key
-    # Alias match
-    for key, aliases in ROLE_ALIASES.items():
-        if role_lower in aliases:
-            return key
-    # Partial keyword match
+        all_candidates[key.lower()] = key
     for key, aliases in ROLE_ALIASES.items():
         for alias in aliases:
-            if alias in role_lower or role_lower in alias:
-                return key
-    # Fallback: keyword scan
-    if any(w in role_lower for w in ["frontend", "front end", "front-end", "web", "react", "javascript", "ui"]):
-        return "Web Developer"
-    if any(w in role_lower for w in ["machine learning", "ml", "ai ", "deep learning", "data scien"]):
-        return "AI Engineer"
-    if any(w in role_lower for w in ["data analyst", "analyst", "business intel", "tableau"]):
-        return "Data Analyst"
-    if any(w in role_lower for w in ["security", "cyber", "infosec", "pentest"]):
-        return "Cybersecurity Analyst"
-    if any(w in role_lower for w in ["software", "backend", "fullstack", "full stack", "java", "python dev"]):
-        return "Software Engineer"
+            all_candidates[alias.lower()] = key
+
+    # 1. Exact match
+    if role_lower in all_candidates:
+        return all_candidates[role_lower]
+
+    # 2. Fuzzy match against all known aliases (handles typos like "fronend")
+    close = difflib.get_close_matches(role_lower, all_candidates.keys(), n=1, cutoff=0.6)
+    if close:
+        return all_candidates[close[0]]
+
+    # 3. Substring / keyword fallback
+    keyword_map = [
+        (["frontend", "front end", "front-end", "web dev", "react dev", "ui dev", "javascript dev"], "Web Developer"),
+        (["machine learning", "ml eng", "ai eng", "deep learning", "nlp", "data scien"], "AI Engineer"),
+        (["data analyst", "business analyst", "bi analyst", "analytics"], "Data Analyst"),
+        (["cyber", "security", "infosec", "pentest", "soc"], "Cybersecurity Analyst"),
+        (["software", "backend", "fullstack", "full stack", "java dev", "python dev", "swe"], "Software Engineer"),
+    ]
+    for keywords, key in keyword_map:
+        if any(kw in role_lower for kw in keywords):
+            return key
+
     return ""  # Unrecognised role
 
 
@@ -270,32 +277,39 @@ Total 12-20 weeks. Use real course names (e.g. "CS50 on edX"). Prioritize high-i
 
 
 async def generate_writing_improvements(resume_text: str) -> list[dict]:
-    prompt = f"""You are a professional resume writing coach. Read this resume and find 5-7 weak sentences that could be written better.
+    prompt = f"""You are a professional resume writing coach. Read this resume and find 5 weak sentences that could be written better.
 
 RESUME TEXT:
 {resume_text[:4000]}
 
 For each weak sentence:
-- Copy the EXACT original sentence from the resume (word for word)
+- Copy the EXACT original sentence from the resume (word for word, do not shorten it)
 - Rewrite it to be stronger: use powerful action verbs, add quantified impact, be specific
 - Give a short reason (max 10 words) explaining the improvement
 
-Rules:
-- Only pick sentences that actually exist in the resume — do NOT invent sentences
-- Improvements should add impact numbers/metrics where possible (e.g. "improved performance by 40%")
-- Focus on bullet points, job descriptions, and achievement statements
-- Skip header lines, contact info, and section titles
+Focus on bullet points and job description lines. Skip contact info, section titles, and headers.
 
-Return ONLY a valid JSON array:
+Return ONLY a valid JSON array with exactly this structure, no markdown, no extra text:
 [
   {{
     "original": "exact sentence copied from resume",
     "improved": "rewritten stronger version with action verb and impact",
     "reason": "short reason for improvement"
+  }},
+  {{
+    "original": "another exact sentence from resume",
+    "improved": "its stronger rewritten version",
+    "reason": "short reason"
   }}
 ]"""
 
-    return json.loads(_clean_json(_chat(prompt)))
+    raw = _chat(prompt)
+    cleaned = _clean_json(raw)
+    result = json.loads(cleaned)
+    # Ensure it's a list
+    if isinstance(result, dict):
+        result = [result]
+    return result
 
 
 async def generate_interview_questions(resume_text: str, target_role: str, difficulty: str = "mixed") -> list[str]:
