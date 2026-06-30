@@ -66,17 +66,35 @@ function AnalysisContent() {
         </div>
 
         {/* Score Cards */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col items-center">
-            <ScoreCard score={data.ats_score} label="ATS Score" color="#6366f1" />
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col items-center">
-            <ScoreCard score={data.strength_score} label="Strength Score" color="#10b981" />
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col items-center">
-            <ScoreCard score={data.match_percentage} label="Role Match" color="#f59e0b" />
-          </div>
-        </div>
+        {(() => {
+          const matchLabel =
+            data.match_percentage >= 75 ? "Strong Match" :
+            data.match_percentage >= 50 ? "Good Match" :
+            data.match_percentage >= 25 ? "Developing" :
+            data.match_percentage > 0 ? "Significant Gaps" : null;
+          return (
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col items-center">
+                <ScoreCard score={data.ats_score} label="ATS Score" color="#6366f1" />
+              </div>
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col items-center">
+                <ScoreCard score={data.strength_score} label="Strength Score" color="#10b981" />
+              </div>
+              <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col items-center">
+                <ScoreCard score={data.match_percentage} label="Role Match" color="#f59e0b" />
+                {matchLabel && (
+                  <span className={`mt-2 text-xs font-semibold px-3 py-1 rounded-full
+                    ${data.match_percentage >= 75 ? "bg-green-900/30 text-green-400 border border-green-800" :
+                      data.match_percentage >= 50 ? "bg-blue-900/30 text-blue-400 border border-blue-800" :
+                      data.match_percentage >= 25 ? "bg-yellow-900/30 text-yellow-400 border border-yellow-800" :
+                      "bg-red-900/30 text-red-400 border border-red-800"}`}>
+                    {matchLabel}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Skills */}
         {(() => {

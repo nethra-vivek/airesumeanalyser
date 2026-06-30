@@ -194,9 +194,11 @@ def _get_resources(skill: str) -> list[str]:
 async def analyze_resume(resume_text: str, target_role: str) -> dict:
     """
     Hybrid approach:
-    - AI handles: skill extraction, qualitative feedback, ATS score, strength score
-    - Python handles: skill matching, match_percentage, skill_gaps (deterministic)
+    - Step 1 (AI): extract skills, ATS score, strength score, feedback
+    - Step 2 (Python): deterministic skill matching and match_percentage
+    - Step 3 (AI): generate summary AFTER knowing actual match_percentage
     """
+    # Step 1 — AI extracts skills and scores (no summary yet)
     prompt = f"""Analyze this resume for the role of "{target_role}".
 
 RESUME TEXT:
@@ -204,22 +206,43 @@ RESUME TEXT:
 
 Return ONLY a valid JSON object with this exact structure:
 {{
-  "extracted_skills": ["list", "every", "technical", "skill", "tool", "language", "framework", "technology", "mentioned", "in", "the", "resume"],
-  "ats_score": <integer 0-100, based on: keyword density, clear section headers, action verbs, no tables or graphics in text, quantified achievements>,
-  "strength_score": <integer 0-100, based on: measurable impact, strong action verbs, relevant projects, leadership or ownership signals>,
-  "ats_feedback": ["specific tip 1", "specific tip 2", "specific tip 3", "specific tip 4"],
-  "strengths": ["specific strength from resume 1", "specific strength 2", "specific strength 3"],
-  "weaknesses": ["specific gap or weakness 1", "specific gap or weakness 2", "specific gap or weakness 3"],
-  "summary": "2-3 sentence honest assessment of this candidate for the {target_role} role"
+  "extracted_skills": ["every technical skill, tool, language, framework, library, platform mentioned in the resume"],
+  "ats_score": <integer 0-100, based on: keyword density, clear section headers, action verbs, quantified achievements>,
+  "strength_score": <integer 0-100, based on: measurable impact, strong action verbs, relevant projects, leadership signals>,
+  "ats_feedback": ["specific actionable tip 1", "tip 2", "tip 3", "tip 4"],
+  "strengths": ["specific strength from this resume 1", "strength 2", "strength 3"],
+  "weaknesses": ["specific weakness or gap 1", "weakness 2", "weakness 3"]
 }}
 
-Be thorough with extracted_skills — include every technology, language, framework, library, tool, and platform mentioned anywhere in the resume."""
+Be thorough with extracted_skills — include everything mentioned anywhere in the resume."""
 
     ai_data = json.loads(_clean_json(_chat(prompt)))
 
-    # Python does all skill matching — 100% reliable, no AI hallucination
+    # Step 2 — Python does deterministic skill matching
     extracted = ai_data.get("extracted_skills", [])
     matched, missing, match_pct, skill_gaps = _match_skills(extracted, target_role)
+
+    # Step 3 — Generate summary NOW that we know the actual match_percentage
+    role_key = _find_role_key(target_role)
+    match_label = (
+        "strong match" if match_pct >= 75 else
+        "good match" if match_pct >= 50 else
+        "developing match" if match_pct >= 25 else
+        "significant skill gap"
+    )
+    summary_prompt = f"""Write a 2-3 sentence honest summary of this candidate for the "{target_role}" role.
+
+Key facts you MUST reflect accurately:
+- Role match: {match_pct}% ({match_label}) — {"they match " + str(len(matched)) + " of the required skills" if role_key else "role not in our database"}
+- Matched skills: {", ".join(matched[:6]) if matched else "none matched"}
+- Missing skills: {", ".join(missing[:6]) if missing else "none" if role_key else "could not be determined"}
+- ATS score: {ai_data.get("ats_score", 0)}/100
+- Strength score: {ai_data.get("strength_score", 0)}/100
+
+The summary MUST be consistent with these numbers. If match is below 50%, do NOT call them a "strong candidate". Be honest but constructive.
+Return ONLY the summary text, no JSON, no quotes."""
+
+    summary = _chat(summary_prompt).strip().strip('"')
 
     return {
         "ats_score": ai_data.get("ats_score", 60),
@@ -232,7 +255,7 @@ Be thorough with extracted_skills — include every technology, language, framew
         "ats_feedback": ai_data.get("ats_feedback", []),
         "strengths": ai_data.get("strengths", []),
         "weaknesses": ai_data.get("weaknesses", []),
-        "summary": ai_data.get("summary", ""),
+        "summary": summary,
     }
 
 
