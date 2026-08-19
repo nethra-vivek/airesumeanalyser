@@ -66,7 +66,8 @@ export default function DashboardPage() {
       sessionStorage.setItem("analysisResult", JSON.stringify(data));
       router.push("/analysis");
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Analysis failed. Check your API key.");
+      const detail = err.response?.data?.detail;
+      setError(typeof detail === "string" ? detail : "Analysis failed. Please try again.");
     } finally {
       setAnalysing(false);
     }

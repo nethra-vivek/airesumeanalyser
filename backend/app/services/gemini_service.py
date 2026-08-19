@@ -1,6 +1,7 @@
-from groq import Groq
+from groq import Groq, RateLimitError
 import json
 import difflib
+from fastapi import HTTPException
 from app.config import settings
 from app.utils.job_roles import JOB_ROLE_REQUIREMENTS
 
@@ -24,16 +25,22 @@ def _clean_json(text: str) -> str:
 
 
 def _chat(prompt: str) -> str:
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.2,
-        max_tokens=4096,
-    )
-    return response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.2,
+            max_tokens=4096,
+        )
+        return response.choices[0].message.content
+    except RateLimitError:
+        raise HTTPException(
+            status_code=429,
+            detail="Daily AI quota reached. Groq free tier allows 100,000 tokens/day. Please try again in a few hours."
+        )
 
 
 ROLE_ALIASES = {
