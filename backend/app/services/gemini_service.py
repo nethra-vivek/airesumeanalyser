@@ -6,7 +6,7 @@ from app.config import settings
 from app.utils.job_roles import JOB_ROLE_REQUIREMENTS
 
 client = Groq(api_key=settings.groq_api_key)
-MODEL = "llama-3.1-8b-instant"
+MODEL = "gemma2-9b-it"
 
 SYSTEM_PROMPT = """You are an expert career counselor and technical recruiter.
 Always respond with valid JSON matching the exact schema requested.
